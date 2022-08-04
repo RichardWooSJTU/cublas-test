@@ -65,7 +65,6 @@ static cublasStatus_t TestMatmulRun(cublasLtHandle_t ltHandle,
             }
         }
         err = cudaEventRecord(stopEvent, stream);
-        err = cudaEventSynchronize(stopEvent);
         float time;
         err = cudaEventElapsedTime(&time, startEvent, stopEvent);
         if (err != cudaSuccess) {

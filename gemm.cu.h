@@ -5,7 +5,7 @@
 
 #pragma once
 
-void GemmInt8(int m, int k, int n, 
+std::vector<int32_t>  GemmInt8(int m, int k, int n, 
     cublasLtHandle_t ltHandle
     );
 
@@ -13,7 +13,7 @@ void GemmFp16(int m, int k, int n,
     cublasLtHandle_t ltHandle);
 
 void CublasGemmFp16(int m, int k, int n, cublasHandle_t handle);
-void CublasGemmInt8(int m, int k, int n, cublasHandle_t handle);
+std::vector<int32_t> CublasGemmInt8(int m, int k, int n, cublasHandle_t handle);
 
 inline double diffTime(timeval start, timeval end)
 {

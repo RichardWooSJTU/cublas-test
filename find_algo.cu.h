@@ -72,10 +72,10 @@ static cublasStatus_t TestMatmulRun(cublasLtHandle_t ltHandle,
         cublasLtMatmulAlgoCheck(ltHandle, matmulDesc, A_desc, B_desc, C_desc, C_desc, &algo, &heurResult);
     if (algoStatus == CUBLAS_STATUS_SUCCESS) {
         cudaError_t err;
-        err = cudaEventRecord(startEvent, stream);
          OutT alpha = 1, beta = 0;
         void* workSpace;
         cudaMalloc(&workSpace, heurResult.workspaceSize);
+        err = cudaEventRecord(startEvent, stream);
         int repeats = 10000;
         for (int loop = 0; loop < repeats; loop++) {
             cublasStatus_t oneRunStatus = cublasLtMatmul(ltHandle,
