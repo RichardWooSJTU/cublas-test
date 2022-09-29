@@ -14,4 +14,9 @@ CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o: ../find_algo.cu.h
 CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o: ../gemm.cu.h
 CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o: ../gemmInt8.cu
 
+CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../cublas.cu.h
+CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../find_algo.cu.h
+CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../gemm.cu.h
+CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../gemm.h
+CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../test_data_order.cu
 

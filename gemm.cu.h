@@ -9,6 +9,8 @@ std::vector<int32_t>  GemmInt8(int m, int k, int n,
     cublasLtHandle_t ltHandle
     );
 
+std::vector<int32_t> GemmInt8Imma1(const std::vector<int8_t>& A, const std::vector<int8_t>& B, int m, int n, int k);
+
 void GemmFp16(int m, int k, int n, 
     cublasLtHandle_t ltHandle);
 

@@ -33,6 +33,112 @@ T* PrepareData(int m, int n, std::string name) {
     return data_d;
 }
 
+std::vector<int32_t> GemmInt8Imma1(const std::vector<int8_t>& A, const std::vector<int8_t>& B, int m, int n, int k) {
+    int8_t* A_dev;
+    int8_t* B_dev;
+    int32_t* C_dev;
+
+    std::vector<int32_t> C(m * n);
+
+    cudaMalloc(&A_dev, A.size() * sizeof(int8_t));
+    cudaMalloc(&B_dev, B.size() * sizeof(int8_t));
+    cudaMalloc(&C_dev, C.size() * sizeof(int32_t));
+
+    cudaMemcpy(A_dev, A.data(), A.size(), cudaMemcpyHostToDevice);
+    cudaMemcpy(B_dev, B.data(), B.size(), cudaMemcpyHostToDevice);
+
+    //init data structure
+
+    cublasLtHandle_t handle_;
+    cublasLtMatmulDesc_t matmul_desc_;
+    cublasLtMatrixLayout_t A_desc_;
+    cublasLtMatrixLayout_t B_desc_;
+    cublasLtMatrixLayout_t C_desc_;
+    int32_t alpha_ = 1;
+    int32_t beta_ = 0;
+
+
+    cublasLtCreate(&handle_);
+    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
+    cublasLtMatmulDescCreate(
+        &matmul_desc_, cudaComputeType, CUDA_R_32I);
+    cublasOperation_t op_transpose = CUBLAS_OP_T;
+    cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                                 CUBLASLT_MATMUL_DESC_TRANSA,
+                                                 &op_transpose,
+                                                 sizeof(op_transpose));
+    cublasLtMatrixLayoutCreate(&B_desc_, CUDA_R_8I, k, n, k);
+    cublasLtMatrixLayoutCreate(&A_desc_, CUDA_R_8I, k, m, k);
+    cublasLtMatrixLayoutCreate(&C_desc_, CUDA_R_32I, n, m, n);
+
+
+    cublasLtMatmulAlgo_t algo;
+    int algoId = 21;
+    int swizzle = 0;
+    int customOption = 0;
+    int tile = 15;
+    int splitK_val = 0;
+    int reductionScheme = 0;
+    int stages = 23;
+
+
+    cublasLtMatmulAlgoInit(handle_,
+                                cudaComputeType,
+                                CUDA_R_32I,
+                                CUDA_R_8I,
+                                CUDA_R_8I,
+                                CUDA_R_32I,
+                                CUDA_R_32I,
+                                algoId,
+                                &algo);
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+        CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
+        &(customOption),
+        sizeof(customOption));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
+    cublasLtMatmulAlgoConfigSetAttribute(&algo,
+                                              CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                                              &(splitK_val),
+                                              sizeof(splitK_val));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &(swizzle), sizeof(swizzle));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+        CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
+        &(reductionScheme),
+        sizeof(int));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+
+    cublasStatus_t status;
+    // PrintMatrix(A_dev, m, k);
+    // PrintMatrix(B_dev, k, n);
+    status = cublasLtMatmul(handle_,
+                                 matmul_desc_,
+                                 &alpha_,
+                                 B_dev,
+                                 B_desc_,
+                                 A_dev,
+                                 A_desc_,
+                                 &beta_,
+                                 C_dev,
+                                 C_desc_,
+                                 C_dev,
+                                 C_desc_,
+                                 &algo,
+                                //  nullptr,
+                                 nullptr,
+                                 0,
+                                 0);
+    std::cout << "status " << status << std::endl;
+    cudaDeviceSynchronize();
+
+    PrintMatrix(C_dev, m, n);
+    cudaMemcpy(C.data(), C_dev, m * n * sizeof(int32_t), cudaMemcpyDeviceToHost);
+    return C;
+}
 
 std::vector<int32_t> GemmInt8(int m, int k, int n, 
     cublasLtHandle_t ltHandle

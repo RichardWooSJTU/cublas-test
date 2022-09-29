@@ -43,10 +43,10 @@ RM = /home/cmake-3.16.0-Linux-x86_64/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /root/paddlejob/workspace/env_run/a100/cublas-test
+CMAKE_SOURCE_DIR = /root/paddlejob/workspace/env_run/wfs/cublas-test
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /root/paddlejob/workspace/env_run/a100/cublas-test/build
+CMAKE_BINARY_DIR = /root/paddlejob/workspace/env_run/wfs/cublas-test/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/test_cublaslt.dir/depend.make
@@ -59,8 +59,8 @@ include CMakeFiles/test_cublaslt.dir/flags.make
 
 CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: CMakeFiles/test_cublaslt.dir/flags.make
 CMakeFiles/test_cublaslt.dir/test_data_order.cu.o: ../test_data_order.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CUDA object CMakeFiles/test_cublaslt.dir/test_data_order.cu.o"
-	/usr/local/cuda/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/a100/cublas-test/test_data_order.cu -o CMakeFiles/test_cublaslt.dir/test_data_order.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CUDA object CMakeFiles/test_cublaslt.dir/test_data_order.cu.o"
+	/root/paddlejob/workspace/env_run/infer_env/cuda-11.2/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/wfs/cublas-test/test_data_order.cu -o CMakeFiles/test_cublaslt.dir/test_data_order.cu.o
 
 CMakeFiles/test_cublaslt.dir/test_data_order.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/test_cublaslt.dir/test_data_order.cu.i"
@@ -72,8 +72,8 @@ CMakeFiles/test_cublaslt.dir/test_data_order.cu.s: cmake_force
 
 CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o: CMakeFiles/test_cublaslt.dir/flags.make
 CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o: ../gemmInt8.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o"
-	/usr/local/cuda/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/a100/cublas-test/gemmInt8.cu -o CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o"
+	/root/paddlejob/workspace/env_run/infer_env/cuda-11.2/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/wfs/cublas-test/gemmInt8.cu -o CMakeFiles/test_cublaslt.dir/gemmInt8.cu.o
 
 CMakeFiles/test_cublaslt.dir/gemmInt8.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/test_cublaslt.dir/gemmInt8.cu.i"
@@ -85,8 +85,8 @@ CMakeFiles/test_cublaslt.dir/gemmInt8.cu.s: cmake_force
 
 CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o: CMakeFiles/test_cublaslt.dir/flags.make
 CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o: ../gemmFp16.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o"
-	/usr/local/cuda/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/a100/cublas-test/gemmFp16.cu -o CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o"
+	/root/paddlejob/workspace/env_run/infer_env/cuda-11.2/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/wfs/cublas-test/gemmFp16.cu -o CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o
 
 CMakeFiles/test_cublaslt.dir/gemmFp16.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/test_cublaslt.dir/gemmFp16.cu.i"
@@ -98,8 +98,8 @@ CMakeFiles/test_cublaslt.dir/gemmFp16.cu.s: cmake_force
 
 CMakeFiles/test_cublaslt.dir/cublas.cu.o: CMakeFiles/test_cublaslt.dir/flags.make
 CMakeFiles/test_cublaslt.dir/cublas.cu.o: ../cublas.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CUDA object CMakeFiles/test_cublaslt.dir/cublas.cu.o"
-	/usr/local/cuda/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/a100/cublas-test/cublas.cu -o CMakeFiles/test_cublaslt.dir/cublas.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CUDA object CMakeFiles/test_cublaslt.dir/cublas.cu.o"
+	/root/paddlejob/workspace/env_run/infer_env/cuda-11.2/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /root/paddlejob/workspace/env_run/wfs/cublas-test/cublas.cu -o CMakeFiles/test_cublaslt.dir/cublas.cu.o
 
 CMakeFiles/test_cublaslt.dir/cublas.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/test_cublaslt.dir/cublas.cu.i"
@@ -125,7 +125,7 @@ test_cublaslt: CMakeFiles/test_cublaslt.dir/gemmFp16.cu.o
 test_cublaslt: CMakeFiles/test_cublaslt.dir/cublas.cu.o
 test_cublaslt: CMakeFiles/test_cublaslt.dir/build.make
 test_cublaslt: CMakeFiles/test_cublaslt.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA executable test_cublaslt"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA executable test_cublaslt"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/test_cublaslt.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -138,6 +138,6 @@ CMakeFiles/test_cublaslt.dir/clean:
 .PHONY : CMakeFiles/test_cublaslt.dir/clean
 
 CMakeFiles/test_cublaslt.dir/depend:
-	cd /root/paddlejob/workspace/env_run/a100/cublas-test/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/paddlejob/workspace/env_run/a100/cublas-test /root/paddlejob/workspace/env_run/a100/cublas-test /root/paddlejob/workspace/env_run/a100/cublas-test/build /root/paddlejob/workspace/env_run/a100/cublas-test/build /root/paddlejob/workspace/env_run/a100/cublas-test/build/CMakeFiles/test_cublaslt.dir/DependInfo.cmake --color=$(COLOR)
+	cd /root/paddlejob/workspace/env_run/wfs/cublas-test/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /root/paddlejob/workspace/env_run/wfs/cublas-test /root/paddlejob/workspace/env_run/wfs/cublas-test /root/paddlejob/workspace/env_run/wfs/cublas-test/build /root/paddlejob/workspace/env_run/wfs/cublas-test/build /root/paddlejob/workspace/env_run/wfs/cublas-test/build/CMakeFiles/test_cublaslt.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/test_cublaslt.dir/depend
 
