@@ -50,7 +50,7 @@ static inline bool time_compare_algo_para(const algoSelect_t& algo_para_a, const
     return (algo_para_a.time < algo_para_b.time);
 }
 
-template<typename InT, typename OutT>
+template<typename InT, typename OutT, typename ScaleT = OutT>
 static cublasStatus_t TestMatmulRun(cublasLtHandle_t ltHandle,
                                     cublasLtMatmulDesc_t matmulDesc,
                                     cublasLtMatrixLayout_t A_desc,
@@ -71,11 +71,11 @@ static cublasStatus_t TestMatmulRun(cublasLtHandle_t ltHandle,
         cublasLtMatmulAlgoCheck(ltHandle, matmulDesc, A_desc, B_desc, C_desc, C_desc, &algo, &heurResult);
     if (algoStatus == CUBLAS_STATUS_SUCCESS) {
         cudaError_t err;
-         OutT alpha = 1, beta = 0;
+        ScaleT alpha = static_cast<ScaleT>(1), beta = static_cast<ScaleT>(0);
         void* workSpace;
         cudaMalloc(&workSpace, heurResult.workspaceSize);
         err = cudaEventRecord(startEvent, stream);
-        int repeats = 100;
+        int repeats = 10;
         for (int loop = 0; loop < repeats; loop++) {
             cublasStatus_t oneRunStatus = cublasLtMatmul(ltHandle,
                                                             matmulDesc,
@@ -128,7 +128,7 @@ static cublasStatus_t TestMatmulRun(cublasLtHandle_t ltHandle,
     return algoStatus;
 }
 
-template<typename InT, typename OutT>
+template<typename InT, typename OutT, typename ScaleT = OutT>
 std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
              int m,
              int n,
@@ -183,20 +183,20 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
         size_t sizeWritten = 0;
         cublasLtMatmulAlgoCapGetAttribute(&algo, CUBLASLT_ALGO_CAP_TILE_IDS, NULL, 0, &sizeWritten);
         int nbTiles = int(sizeWritten / sizeof(int));
-        std::vector<int> tileA(nbTiles == 0 ? 1 : nbTiles);
+        std::vector<uint32_t> tileA(nbTiles == 0 ? 1 : nbTiles);
         if (nbTiles == 0) {
             tileA[0] = CUBLASLT_MATMUL_TILE_UNDEFINED;
             nbTiles = 1;
             // std::cout << "no tiles" << std::endl;
         } else {
             cublasLtMatmulAlgoCapGetAttribute(
-                &algo, CUBLASLT_ALGO_CAP_TILE_IDS, tileA.data(), sizeof(int) * nbTiles, &sizeWritten);
+                &algo, CUBLASLT_ALGO_CAP_TILE_IDS, tileA.data(), sizeof(uint32_t) * nbTiles, &sizeWritten);
         }
         // std::cout << "has tiles " << nbTiles << std::endl;
         // Query the stages enums supported by that algo (cuda must >= 11.0)
         cublasLtMatmulAlgoCapGetAttribute(&algo, CUBLASLT_ALGO_CAP_STAGES_IDS, NULL, 0, &sizeWritten);
-        int nbStages = int(sizeWritten / sizeof(int));
-        std::vector<int> stagesA(nbStages == 0 ? 1 : nbStages);
+        int nbStages = int(sizeWritten / sizeof(uint32_t));
+        std::vector<uint32_t> stagesA(nbStages == 0 ? 1 : nbStages);
         if (nbStages == 0) {
             stagesA[0] = CUBLASLT_MATMUL_STAGES_UNDEFINED;
             nbStages = 1;
@@ -204,13 +204,14 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
         }
         else {
             cublasLtMatmulAlgoCapGetAttribute(
-                &algo, CUBLASLT_ALGO_CAP_STAGES_IDS, stagesA.data(), sizeof(int) * nbStages, &sizeWritten);
+                &algo, CUBLASLT_ALGO_CAP_STAGES_IDS, stagesA.data(), sizeof(uint32_t) * nbStages, &sizeWritten);
                 
         }
 
         // std::cout << "has stages " << nbStages << std::endl;
         // Retrieve Other Algo Capabilities attributes
-        int splitkSupport, redMask, swizzlingMax, customOptionMax;
+        int32_t splitkSupport, customOptionMax;
+        uint32_t redMask, swizzlingMax;
         cublasLtMatmulAlgoCapGetAttribute(
             &algo, CUBLASLT_ALGO_CAP_SPLITK_SUPPORT, &splitkSupport, sizeof(splitkSupport), &sizeWritten);
         cublasLtMatmulAlgoCapGetAttribute(
@@ -225,29 +226,47 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
             /* Loop over different stages count */
             for (int stagesIdx = 0; stagesIdx < nbStages && AlgoCount < AlgoCombinations; stagesIdx++) {
                 /* Loop over the different custom option if any */
-                for (int customOption = 0; customOption <= customOptionMax && AlgoCount < AlgoCombinations; customOption++) {
+                for (int32_t customOption = 0; customOption <= customOptionMax && AlgoCount < AlgoCombinations; customOption++) {
                      /* Loop over the CTAs swizzling support */
-                     for (int k = 0; k <= swizzlingMax && AlgoCount < AlgoCombinations; k++) {
+                     for (uint32_t k = 0; k <= swizzlingMax && AlgoCount < AlgoCombinations; k++) {
                         int splitK_trial = 0;
                         if (splitkSupport) {
                             splitK_trial += sizeof(splitKSequenceA) / sizeof(splitKSequenceA[0]);
                         }
 
                         for (int l = 0; (l < (1 + splitK_trial)) && (AlgoCount < AlgoCombinations); l++) {
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            auto algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &tileA[tileIdx], sizeof(tileA[tileIdx]));
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
+                            algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &stagesA[stagesIdx], sizeof(stagesA[stagesIdx]));
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
+                            algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION, &customOption, sizeof(customOption));
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
+                            algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &k, sizeof(k));
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
                             int splitK_val = 0;
-                            int redScheme = CUBLASLT_REDUCTION_SCHEME_NONE;
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            uint32_t redScheme = CUBLASLT_REDUCTION_SCHEME_NONE;
+                            algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_SPLITK_NUM, &splitK_val, sizeof(splitK_val));
-                            cublasLtMatmulAlgoConfigSetAttribute(
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
+                            algo_status = cublasLtMatmulAlgoConfigSetAttribute(
                                 &algo, CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME, &redScheme, sizeof(int));
+                            if (status != CUBLAS_STATUS_SUCCESS) {
+                                std::cout << "GG cublasLtMatmulAlgoConfigSetAttribute with status " << status << std::endl;
+                            }
                             if (l > 0) {  // Split-K case
                                 splitK_val = splitKSequenceA[l - 1];
                                 cublasLtMatmulAlgoConfigSetAttribute(&algo,
@@ -312,6 +331,8 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
                                     algoSelect.stages = stagesA[stagesIdx];
                                     algos.push_back(algoSelect);
                                     AlgoCount++;
+                                } else {
+                                    // std::cout << "algoStatus " << algoStatus;
                                 }
                             }
                             
@@ -332,7 +353,7 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
         std::cout << " cudaEventCreate GG with status "<< std::endl;
     }
     for (int i = 0; i < AlgoCount; i++) {
-        status = TestMatmulRun(ltHandle,
+        status = TestMatmulRun<InT, OutT, ScaleT>(ltHandle,
             matmulDesc,
             A_desc,
             B_desc,
@@ -359,7 +380,7 @@ std::vector<customMatmulPerf_t> FindAlgo(cublasLtHandle_t ltHandle,
     while (algos[i].time == 0) i++;
     // return perfResults;
     std::ofstream outfile;
-    outfile.open("select.csv", std::ios::app);
+    outfile.open("select2.csv", std::ios::app);
     outfile << m << ","  << k << "," << n << "," << algos[i].algoId << "," <<
         algos[i].swizzle << "," << algos[i].customOption << "," << algos[i].tile << "," << algos[i].splitK_val << 
         "," << algos[i].reductionScheme << "," << algos[i].stages  << "," << algos[i].workspaceSize << "," <<  algos[i].time  << std::endl;
