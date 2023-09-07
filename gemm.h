@@ -5,6 +5,7 @@
 #include <cuda_runtime_api.h>
 #include <cublasLt.h>
 #include <cublas_v2.h>
+#include <cuda_fp8.h>
 #include <vector>
 #include "utils.h"
 #include "find_algo.cu.h"
@@ -370,6 +371,213 @@ void GEMM<__nv_bfloat16, __nv_bfloat16, CUBLASLTContext>(CUBLASLTContext dev_ctx
                                 CUDA_R_16BF,
                                 CUDA_R_16BF,
                                 CUDA_R_16BF,
+                                algoId,
+                                &algo);
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+        CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
+        &(customOption),
+        sizeof(customOption));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
+    cublasLtMatmulAlgoConfigSetAttribute(&algo,
+                                              CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
+                                              &(splitK_val),
+                                              sizeof(splitK_val));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &(swizzle), sizeof(swizzle));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo,
+        CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
+        &(reductionScheme),
+        sizeof(int));
+    cublasLtMatmulAlgoConfigSetAttribute(
+        &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+
+    cublasStatus_t status;
+    // PrintMatrix(A_dev, m, k);
+    // PrintMatrix(B_dev, k, n);
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    const int repeats = 100;
+    for (int loop = 0; loop < repeats; loop++) {
+        status = cublasLtMatmul(dev_ctx.handle_,
+                                    matmul_desc_,
+                                    &alpha_,
+                                    B_dev,
+                                    B_desc_,
+                                    A_dev,
+                                    A_desc_,
+                                    &beta_,
+                                    C_dev,
+                                    C_desc_,
+                                    C_dev,
+                                    C_desc_,
+                                    &algo,
+                                    //  nullptr,
+                                    (void*)workspace,
+                                    // 0,
+                                    work_space_size,
+                                    0);
+    }                            
+    std::cout << "status " << status << std::endl;
+    cudaDeviceSynchronize();
+
+    gettimeofday(&end, NULL);
+    float time = diffTime(start, end);
+    std::cout << "GEMM with cublaslt imma1 bf16 spend " << time/repeats << " ms in " << m  << ", " << k << ", " << n << std::endl;
+
+    // PrintMatrix(C_dev, m, n);
+    cudaMemcpy(C.data(), C_dev, m * n * sizeof(int32_t), cudaMemcpyDeviceToHost);                        
+}
+
+template<>
+void GEMM<__nv_fp8_e4m3, __nv_bfloat16, CUBLASLTContext>(CUBLASLTContext dev_ctx,
+                              const std::vector<__nv_fp8_e4m3>& A, 
+                              const std::vector<__nv_fp8_e4m3>& B, 
+                              std::vector<__nv_bfloat16>& C, 
+                            int m, 
+                            int k, 
+                            int n,
+                              bool is_test) {
+    __nv_fp8_e4m3* A_dev;
+    __nv_fp8_e4m3* B_dev;
+    __nv_bfloat16* C_dev;
+    char* workspace;
+
+    auto A_type = CUDA_R_8F_E4M3;
+    auto B_type = CUDA_R_8F_E4M3;
+    auto C_type = CUDA_R_16BF;
+
+    cudaMalloc((void**)&A_dev, A.size() * sizeof(__nv_fp8_e4m3));
+    cudaMalloc((void**)&B_dev, B.size() * sizeof(__nv_fp8_e4m3));
+    cudaMalloc((void**)&C_dev, m * n * sizeof(__nv_bfloat16));
+
+
+    cudaMemcpy(A_dev, A.data(), A.size(), cudaMemcpyHostToDevice);
+    cudaMemcpy(B_dev, B.data(), B.size(), cudaMemcpyHostToDevice);
+
+    //init data structure
+
+    cublasLtMatmulDesc_t matmul_desc_;
+    cublasLtMatrixLayout_t A_desc_;
+    cublasLtMatrixLayout_t B_desc_;
+    cublasLtMatrixLayout_t C_desc_;
+    float alpha_ = 1.0;
+    float beta_ = 0.0;
+
+
+    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F;
+    cublasLtMatmulDescCreate(
+        &matmul_desc_, cudaComputeType, CUDA_R_32F);
+    cublasOperation_t op_transpose = CUBLAS_OP_T;
+    // cublasLtMatmulDescSetAttribute(matmul_desc_,
+    //                                              CUBLASLT_MATMUL_DESC_TRANSA,
+    //                                              &op_transpose,
+    //                                              sizeof(op_transpose));
+    cublasLtMatrixLayoutCreate(&B_desc_, A_type, n, k, n);
+    cublasLtMatrixLayoutCreate(&A_desc_, B_type, k, m, k);
+    cublasLtMatrixLayoutCreate(&C_desc_, C_type, n, m, n);
+
+    cublasLtMatmulAlgo_t algo;
+    int algoId;
+    int swizzle;
+    int customOption;
+    int tile ;
+    int splitK_val;
+    int reductionScheme;
+    int stages;
+    size_t work_space_size;
+    float time_ref;
+
+    if (is_test) {
+        std::vector<algoSelect_t> algos;
+        ////////////
+        // Select //
+        ////////////
+        auto results = FindAlgo<__nv_fp8_e4m3, __nv_bfloat16, float>(dev_ctx.handle_, n, m, k, 
+            B_dev, A_dev, C_dev, matmul_desc_, B_desc_, A_desc_, C_desc_, 
+            CUBLAS_COMPUTE_32F, CUDA_R_32F, B_type, A_type, C_type, algos);
+        int i = 0;
+        while (algos[i].time == 0) i++;
+        algoId = algos[i].algoId;
+        swizzle = algos[i].swizzle;
+        customOption = algos[i].customOption;
+        tile = algos[i].tile;
+        splitK_val = algos[i].splitK_val;
+        reductionScheme = algos[i].reductionScheme;
+        stages = algos[i].stages;
+        work_space_size = algos[i].workspaceSize;
+    } else {
+        // int m_tmp, k_tmp, n_tmp;
+        // FILE *fp;
+        // fp=fopen("select.csv", "r");
+        // if (!fp) {
+        //     algoId = 21;
+        //     swizzle = 0;
+        //     customOption = 0;
+        //     tile = 18;
+        //     splitK_val = 0;
+        //     reductionScheme = 0;
+        //     stages = 21;
+        //     work_space_size = 0;
+        // } else {
+        //     while(1) {
+        //         fscanf(fp,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f",
+        //             &m_tmp,&k_tmp, &n_tmp, &algoId, &swizzle, &customOption,  &tile, &splitK_val, 
+        //             &reductionScheme,&stages, &work_space_size, &time_ref);
+        //         if (feof(fp))break;
+        //         if (m_tmp == m && k_tmp == k && n_tmp == n) break;
+        //     }
+        //     if (m_tmp != m || k_tmp != k || n_tmp != n) {
+        //         std::cout << "Please use test mode to select\n, Now we use default params" << std::endl;
+        //         algoId = 21;
+        //         swizzle = 0;
+        //         customOption = 0;
+        //         tile = 15;
+        //         splitK_val = 0;
+        //         reductionScheme = 0;
+        //         stages = 23;
+        //         work_space_size = 0;
+        //     }
+        // }
+        algoId = 6;
+        swizzle = 1;
+        customOption = 0;
+        if (m <= 128) {
+            tile = 15;
+            stages = 18;
+        } else {
+            tile = 20;
+            stages = 11;
+        }
+        splitK_val = 0;
+        reductionScheme = 0;
+        work_space_size = 0;
+        
+        
+    }
+    std::cout << "=======Res========" << std::endl;
+    std::cout << "algoId: " << algoId <<  std::endl;
+    std::cout << "swizzle: " << swizzle <<  std::endl;
+    std::cout << "customOption: " << customOption <<  std::endl;
+    std::cout << "tile: " << tile <<  std::endl;
+    std::cout << "splitK_val: " << splitK_val <<  std::endl;
+    std::cout << "reductionScheme: " << reductionScheme <<  std::endl;
+    std::cout << "stages: " << stages <<  std::endl;
+    std::cout << "work_space_size: " << work_space_size <<  std::endl;
+
+
+    cudaMalloc((void**)&workspace, work_space_size);
+
+
+    cublasLtMatmulAlgoInit(dev_ctx.handle_,
+                                cudaComputeType,
+                                CUDA_R_32F,
+                                B_type,
+                                A_type,
+                                C_type,
+                                C_type,
                                 algoId,
                                 &algo);
     cublasLtMatmulAlgoConfigSetAttribute(

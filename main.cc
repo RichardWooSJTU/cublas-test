@@ -61,34 +61,34 @@ void BF16TestBench() {
     }
 }
 
-// void Fp8TestBench() {
-//     std::vector<int> mm{1, 2, 4, 8, 16, 32};
-//     auto mm_tmp = std::vector<int>(mm);
-//     int seq_len = 800;
-//     for (auto& m : mm) {
-//         mm_tmp.push_back(m * seq_len);
-//         m *= seq_len;
-//     }
-//     std::vector<int> kk{8192, 1024, 8192, 2752};
-//     std::vector<int> nn{3072, 8192, 5504, 8192};
-//     for (auto m : mm_tmp) {
-//         for (int i = 0; i < kk.size(); ++i) {
-//                 int n = nn[i];
-//                 int k = kk[i];
-//                 auto A = std::vector<__nv_fp8_e4m3>(m * k);
-//                 auto B = std::vector<__nv_fp8_e4m3>(k * n);
-//                 auto C = std::vector<half>(m * n);
+void Fp8TestBench() {
+    std::vector<int> mm{1, 2, 4, 8, 16, 32};
+    auto mm_tmp = std::vector<int>(mm);
+    int seq_len = 800;
+    for (auto& m : mm) {
+        mm_tmp.push_back(m * seq_len);
+        m *= seq_len;
+    }
+    std::vector<int> kk{8192, 1024, 8192, 2752};
+    std::vector<int> nn{3072, 8192, 5504, 8192};
+    for (auto m : mm_tmp) {
+        for (int i = 0; i < kk.size(); ++i) {
+                int n = nn[i];
+                int k = kk[i];
+                auto A = std::vector<__nv_fp8_e4m3>(m * k);
+                auto B = std::vector<__nv_fp8_e4m3>(k * n);
+                auto C = std::vector<half>(m * n);
 
-//                 ct::CUBLASLTContext dev_ctx;
+                ct::CUBLASLTContext dev_ctx;
 
-//                 ct::GEMM(dev_ctx, A,B,C, m,k,n,true);
-//         }
-//     }
-// }
+                ct::GEMM(dev_ctx, A,B,C, m,k,n,true);
+        }
+    }
+}
 
 int main() {
-    // Fp8TestBench();
-    Int8Test();
+    Fp8TestBench();
+    // Int8Test();
     // for (int i = 1; i <= 1; ++i) {
     //     MultiStreamGemmInt8(i);
     // }
