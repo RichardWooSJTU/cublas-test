@@ -94,11 +94,20 @@ void GEMM<int8_t, int32_t, CUBLASLTContext>(CUBLASLTContext dev_ctx,
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
     cublasLtMatmulDescCreate(
         &matmul_desc_, cudaComputeType, CUDA_R_32I);
-    cublasOperation_t op_transpose = CUBLAS_OP_T;
+
+    cublasOperation_t op_transpose_a = CUBLAS_OP_T;
+    cublasOperation_t op_transpose_b = CUBLAS_OP_N;
+
     cublasLtMatmulDescSetAttribute(matmul_desc_,
-                                                 CUBLASLT_MATMUL_DESC_TRANSA,
-                                                 &op_transpose,
-                                                 sizeof(op_transpose));
+                                    CUBLASLT_MATMUL_DESC_TRANSA,
+                                    &op_transpose_a,
+                                    sizeof(op_transpose_a));
+    cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                    CUBLASLT_MATMUL_DESC_TRANSB,
+                                    &op_transpose_b,
+                                    sizeof(op_transpose_b));                                
+
+
     cublasLtMatrixLayoutCreate(&B_desc_, CUDA_R_8I, k, n, k);
     cublasLtMatrixLayoutCreate(&A_desc_, CUDA_R_8I, k, m, k);
     cublasLtMatrixLayoutCreate(&C_desc_, CUDA_R_32I, n, m, n);
@@ -139,22 +148,22 @@ void GEMM<int8_t, int32_t, CUBLASLTContext>(CUBLASLTContext dev_ctx,
             tile = 15;
             splitK_val = 0;
             reductionScheme = 0;
-            stages = 23;
+            stages = 24;
             if (m >= 128) {
-                tile = 20;
-                stages = 17;
+                tile = 24;
+                stages = 21;
             }
             work_space_size = 0;
     }
-    std::cout << "=======Res========" << std::endl;
-    std::cout << "algoId: " << algoId <<  std::endl;
-    std::cout << "swizzle: " << swizzle <<  std::endl;
-    std::cout << "customOption: " << customOption <<  std::endl;
-    std::cout << "tile: " << tile <<  std::endl;
-    std::cout << "splitK_val: " << splitK_val <<  std::endl;
-    std::cout << "reductionScheme: " << reductionScheme <<  std::endl;
-    std::cout << "stages: " << stages <<  std::endl;
-    std::cout << "work_space_size: " << work_space_size <<  std::endl;
+    // std::cout << "=======Res========" << std::endl;
+    // std::cout << "algoId: " << algoId <<  std::endl;
+    // std::cout << "swizzle: " << swizzle <<  std::endl;
+    // std::cout << "customOption: " << customOption <<  std::endl;
+    // std::cout << "tile: " << tile <<  std::endl;
+    // std::cout << "splitK_val: " << splitK_val <<  std::endl;
+    // std::cout << "reductionScheme: " << reductionScheme <<  std::endl;
+    // std::cout << "stages: " << stages <<  std::endl;
+    // std::cout << "work_space_size: " << work_space_size <<  std::endl;
 
 
     cudaMalloc((void**)&workspace, work_space_size);
@@ -195,7 +204,7 @@ void GEMM<int8_t, int32_t, CUBLASLTContext>(CUBLASLTContext dev_ctx,
     // PrintMatrix(B_dev, k, n);
     struct timeval start, end;
     gettimeofday(&start, NULL);
-    const int repeats = 2;
+    const int repeats = 100;
     for (int loop = 0; loop < repeats; loop++) {
         status = cublasLtMatmul(dev_ctx.handle_,
                                     matmul_desc_,
@@ -463,150 +472,45 @@ void GEMM<__nv_fp8_e4m3, __nv_bfloat16, CUBLASLTContext>(CUBLASLTContext dev_ctx
     cublasLtMatrixLayout_t A_desc_;
     cublasLtMatrixLayout_t B_desc_;
     cublasLtMatrixLayout_t C_desc_;
-    float alpha_ = 1.0;
-    float beta_ = 0.0;
-
+    float alpha_ = 1.0f;
+    float beta_ = 0.0f;
 
     cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F;
     cublasLtMatmulDescCreate(
         &matmul_desc_, cudaComputeType, CUDA_R_32F);
     cublasOperation_t op_transpose = CUBLAS_OP_T;
-    // cublasLtMatmulDescSetAttribute(matmul_desc_,
-    //                                              CUBLASLT_MATMUL_DESC_TRANSA,
-    //                                              &op_transpose,
-    //                                              sizeof(op_transpose));
-    cublasLtMatrixLayoutCreate(&B_desc_, A_type, n, k, n);
-    cublasLtMatrixLayoutCreate(&A_desc_, B_type, k, m, k);
+    cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                                 CUBLASLT_MATMUL_DESC_TRANSA,
+                                                 &op_transpose,
+                                                 sizeof(op_transpose));
+    cublasLtMatrixLayoutCreate(&B_desc_, B_type, k, n, k);
+    cublasLtMatrixLayoutCreate(&A_desc_, A_type, k, m, k);
     cublasLtMatrixLayoutCreate(&C_desc_, C_type, n, m, n);
 
-    cublasLtMatmulAlgo_t algo;
-    int algoId;
-    int swizzle;
-    int customOption;
-    int tile ;
-    int splitK_val;
-    int reductionScheme;
-    int stages;
-    size_t work_space_size;
-    float time_ref;
 
-    if (is_test) {
-        std::vector<algoSelect_t> algos;
-        ////////////
-        // Select //
-        ////////////
-        auto results = FindAlgo<__nv_fp8_e4m3, __nv_bfloat16, float>(dev_ctx.handle_, n, m, k, 
-            B_dev, A_dev, C_dev, matmul_desc_, B_desc_, A_desc_, C_desc_, 
-            CUBLAS_COMPUTE_32F, CUDA_R_32F, B_type, A_type, C_type, algos);
-        int i = 0;
-        while (algos[i].time == 0) i++;
-        algoId = algos[i].algoId;
-        swizzle = algos[i].swizzle;
-        customOption = algos[i].customOption;
-        tile = algos[i].tile;
-        splitK_val = algos[i].splitK_val;
-        reductionScheme = algos[i].reductionScheme;
-        stages = algos[i].stages;
-        work_space_size = algos[i].workspaceSize;
-    } else {
-        // int m_tmp, k_tmp, n_tmp;
-        // FILE *fp;
-        // fp=fopen("select.csv", "r");
-        // if (!fp) {
-        //     algoId = 21;
-        //     swizzle = 0;
-        //     customOption = 0;
-        //     tile = 18;
-        //     splitK_val = 0;
-        //     reductionScheme = 0;
-        //     stages = 21;
-        //     work_space_size = 0;
-        // } else {
-        //     while(1) {
-        //         fscanf(fp,"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f",
-        //             &m_tmp,&k_tmp, &n_tmp, &algoId, &swizzle, &customOption,  &tile, &splitK_val, 
-        //             &reductionScheme,&stages, &work_space_size, &time_ref);
-        //         if (feof(fp))break;
-        //         if (m_tmp == m && k_tmp == k && n_tmp == n) break;
-        //     }
-        //     if (m_tmp != m || k_tmp != k || n_tmp != n) {
-        //         std::cout << "Please use test mode to select\n, Now we use default params" << std::endl;
-        //         algoId = 21;
-        //         swizzle = 0;
-        //         customOption = 0;
-        //         tile = 15;
-        //         splitK_val = 0;
-        //         reductionScheme = 0;
-        //         stages = 23;
-        //         work_space_size = 0;
-        //     }
-        // }
-        algoId = 6;
-        swizzle = 1;
-        customOption = 0;
-        if (m <= 128) {
-            tile = 15;
-            stages = 18;
-        } else {
-            tile = 20;
-            stages = 11;
-        }
-        splitK_val = 0;
-        reductionScheme = 0;
-        work_space_size = 0;
-        
-        
-    }
-    std::cout << "=======Res========" << std::endl;
-    std::cout << "algoId: " << algoId <<  std::endl;
-    std::cout << "swizzle: " << swizzle <<  std::endl;
-    std::cout << "customOption: " << customOption <<  std::endl;
-    std::cout << "tile: " << tile <<  std::endl;
-    std::cout << "splitK_val: " << splitK_val <<  std::endl;
-    std::cout << "reductionScheme: " << reductionScheme <<  std::endl;
-    std::cout << "stages: " << stages <<  std::endl;
-    std::cout << "work_space_size: " << work_space_size <<  std::endl;
-
-
+    size_t work_space_size = 30 * 1024 * 1024;
     cudaMalloc((void**)&workspace, work_space_size);
 
+    // Need to use heuristic
+    int returnedResults                             = 0;
+    cublasLtMatmulHeuristicResult_t heuristicResult = {};
+    cublasLtMatmulPreference_t preference = NULL;
 
-    cublasLtMatmulAlgoInit(dev_ctx.handle_,
-                                cudaComputeType,
-                                CUDA_R_32F,
-                                B_type,
-                                A_type,
-                                C_type,
-                                C_type,
-                                algoId,
-                                &algo);
-    cublasLtMatmulAlgoConfigSetAttribute(
-        &algo,
-        CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
-        &(customOption),
-        sizeof(customOption));
-    cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
-    cublasLtMatmulAlgoConfigSetAttribute(&algo,
-                                              CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
-                                              &(splitK_val),
-                                              sizeof(splitK_val));
-    cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &(swizzle), sizeof(swizzle));
-    cublasLtMatmulAlgoConfigSetAttribute(
-        &algo,
-        CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
-        &(reductionScheme),
-        sizeof(int));
-    cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+    cublasLtMatmulPreferenceCreate(&preference);
+    cublasLtMatmulPreferenceSetAttribute(preference, CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES, &work_space_size, sizeof(work_space_size));
+
+    cublasLtMatmulAlgoGetHeuristic(dev_ctx.handle_, matmul_desc_, B_desc_, A_desc_, C_desc_, C_desc_, preference, 1, &heuristicResult, &returnedResults);
+
+    if (returnedResults == 0) {
+        std::cout << "Not supported" << std::endl;
+    }
+
 
     cublasStatus_t status;
-    // PrintMatrix(A_dev, m, k);
-    // PrintMatrix(B_dev, k, n);
     struct timeval start, end;
     gettimeofday(&start, NULL);
     const int repeats = 100;
+
     for (int loop = 0; loop < repeats; loop++) {
         status = cublasLtMatmul(dev_ctx.handle_,
                                     matmul_desc_,
@@ -620,7 +524,8 @@ void GEMM<__nv_fp8_e4m3, __nv_bfloat16, CUBLASLTContext>(CUBLASLTContext dev_ctx
                                     C_desc_,
                                     C_dev,
                                     C_desc_,
-                                    &algo,
+                                    // nullptr,
+                                    &heuristicResult.algo,
                                     //  nullptr,
                                     (void*)workspace,
                                     // 0,
@@ -635,7 +540,7 @@ void GEMM<__nv_fp8_e4m3, __nv_bfloat16, CUBLASLTContext>(CUBLASLTContext dev_ctx
     std::cout << "GEMM with cublaslt imma1 bf16 spend " << time/repeats << " ms in " << m  << ", " << k << ", " << n << std::endl;
 
     // PrintMatrix(C_dev, m, n);
-    cudaMemcpy(C.data(), C_dev, m * n * sizeof(int32_t), cudaMemcpyDeviceToHost);                        
+    cudaMemcpy(C.data(), C_dev, m * n * sizeof(__nv_bfloat16), cudaMemcpyDeviceToHost);                        
 }
 
 void MultiGEMM(CUBLASLTContext dev_ctx,

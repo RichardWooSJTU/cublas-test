@@ -22,7 +22,7 @@ void Int8TestBench() {
     }
     std::vector<int> kk{8192, 1024, 8192, 2752};
     std::vector<int> nn{3072, 8192, 5504, 8192};
-    for (auto m : mm) {
+    for (auto m : mm_tmp) {
         for (int i = 0; i < kk.size(); ++i) {
                 int n = nn[i];
                 int k = kk[i];
@@ -32,7 +32,7 @@ void Int8TestBench() {
 
                 ct::CUBLASLTContext dev_ctx;
 
-                ct::GEMM(dev_ctx, A,B,C, m,k,n,true);
+                ct::GEMM(dev_ctx, A,B,C, m,k,n,false);
         }
     }
 }
@@ -77,17 +77,18 @@ void Fp8TestBench() {
                 int k = kk[i];
                 auto A = std::vector<__nv_fp8_e4m3>(m * k);
                 auto B = std::vector<__nv_fp8_e4m3>(k * n);
-                auto C = std::vector<half>(m * n);
+                auto C = std::vector<__nv_bfloat16>(m * n);
 
                 ct::CUBLASLTContext dev_ctx;
 
-                ct::GEMM(dev_ctx, A,B,C, m,k,n,true);
+                ct::GEMM(dev_ctx, A,B,C, m,k,n,false);
         }
     }
 }
 
 int main() {
-    Fp8TestBench();
+    // Fp8TestBench();
+    Int8TestBench();
     // Int8Test();
     // for (int i = 1; i <= 1; ++i) {
     //     MultiStreamGemmInt8(i);
